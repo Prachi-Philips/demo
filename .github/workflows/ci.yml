@@ -36,7 +36,7 @@ jobs:
       - name: Build, tag, and push image to Amazon ECR
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: demo-app
+          ECR_REPOSITORY: spring-boot-app
           IMAGE_TAG: ${{ github.sha }}
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
@@ -44,8 +44,25 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
-      - name: Deploy to Lambda
+      - name: Deploy to Amazon ECS
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: spring-boot-app
+          IMAGE_TAG: ${{ github.sha }}
+          ECS_CLUSTER: demo-cluster
+          ECS_SERVICE: demo-service
+          ECS_TASK_DEFINITION: demo-task
+          CONTAINER_NAME: demo-container
         run: |
-          aws lambda update-function-code \
-          --function-name your-lambda-name \
-          --zip-file fileb://target/demo-0.0.1-SNAPSHOT.jar
+          # Get current task definition
+          TASK_DEFINITION=$(aws ecs describe-task-definition --task-definition $ECS_TASK_DEFINITION --region us-east-1)
+
+          # Create new task definition with updated image
+          NEW_TASK_DEF=$(echo $TASK_DEFINITION | jq --arg IMAGE "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" '.taskDefinition | .containerDefinitions[0].image = $IMAGE | del(.taskDefinitionArn) | del(.revision) | del(.status) | del(.requiresAttributes) | del(.compatibilities) | del(.registeredAt) | del(.registeredBy)')
+
+          # Register new task definition
+          NEW_TASK_INFO=$(aws ecs register-task-definition --region us-east-1 --cli-input-json "$NEW_TASK_DEF")
+          NEW_REVISION=$(echo $NEW_TASK_INFO | jq '.taskDefinition.revision')
+
+          # Update ECS service with new task definition
+          aws ecs update-service --cluster $ECS_CLUSTER --service $ECS_SERVICE --task-definition $ECS_TASK_DEFINITION:$NEW_REVISION --region us-east-1
