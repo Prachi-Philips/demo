@@ -49,9 +49,9 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: spring-boot-app
           IMAGE_TAG: ${{ github.sha }}
-          ECS_CLUSTER: demo-cluster
-          ECS_SERVICE: demo-service
-          ECS_TASK_DEFINITION: demo-task
+          ECS_CLUSTER: production-cluster
+          ECS_SERVICE: production-service
+          ECS_TASK_DEFINITION: production-task
           CONTAINER_NAME: demo-container
         run: |
           # Get current task definition
