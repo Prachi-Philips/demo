@@ -1,5 +1,6 @@
 package com.example.demo;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -12,6 +13,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/s3")
+@ConditionalOnProperty(name = "app.s3.bucket")
 public class S3Controller {
 
     private final S3Service s3Service;
